@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysqldump-pvc
+  namespace: soft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi  # 根据 19G * 4天 + 缓冲 调整大小
+  # storageClassName: "managed-nfs-storage" # 如果有特定的存储类，请取消注释并填写

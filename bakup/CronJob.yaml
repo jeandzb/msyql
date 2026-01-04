@@ -1,0 +1,76 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mysql-backup-job
+  namespace: soft
+spec:
+  # 建议设置为 Forbid。如果备份卡死或超时，不要启动下一个任务，避免堆积导致服务器崩溃
+  concurrencyPolicy: Forbid
+  schedule: "00 01 * * *" # 每天凌晨 1:00 执行
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mysql-backup
+              image: registry.cn-beijing.aliyuncs.com/alphesh-soft/mysql:8.0.28
+              imagePullPolicy: IfNotPresent
+              # 建议添加资源限制，mysqldump 处理大文件(19G)时需要一定内存，但不能无限制占用
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "1000m"
+                  memory: "2Gi"
+              env:
+                - name: MYSQL_USER
+                  value: root
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mysql-secret      # 引用下文创建的 Secret
+                      key: password
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  # 设置报错立即退出，防止部分命令失败但 Job 显示成功
+                  set -e
+                  
+                  # 定义变量
+                  DATE=$(date +%F-%H-%M)
+                  BACKUP_DIR="/backup"
+                  FILE_NAME="mysql-backup-test-$DATE.sql"
+                  
+                  echo "Start backup at $(date)..."
+                  
+                  # 获取需要备份的数据库列表 (排除系统库)
+                  DBS=$(mysql -h mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e "SHOW DATABASES;" | grep -Ev "Database|information_schema|performance_schema|mysql|sys")
+                  
+                  # 执行备份
+                  # --single-transaction: 关键参数，利用 InnoDB MVCC 实现不锁表热备
+                  # --quick: 逐行读取，防止大表数据一次性读入内存导致 OOM
+                  # --set-gtid-purged=OFF: 避免导入时的 GTID 权限问题
+                  mysqldump -h mysql -u$MYSQL_USER -p$MYSQL_PASSWORD \
+                    --single-transaction \
+                    --quick \
+                    --set-gtid-purged=OFF \
+                    --databases $DBS > $BACKUP_DIR/$FILE_NAME
+                  
+                  echo "Backup created: $BACKUP_DIR/$FILE_NAME"
+                  
+                  # 清理超过 3 天的历史备份
+                  echo "Cleaning up old backups..."
+                  find $BACKUP_DIR -type f -name "*.sql" -mtime +3 -exec rm -f {} \;
+                  
+                  echo "Job finished at $(date)."
+              volumeMounts:
+                - mountPath: /backup
+                  name: backup-volume
+          volumes:
+            - name: backup-volume
+              persistentVolumeClaim:
+                claimName: mysqldump-pvc
