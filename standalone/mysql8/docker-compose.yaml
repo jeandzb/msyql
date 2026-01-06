@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  mysql8_dev:
+    image: registry.cn-beijing.aliyuncs.com/alphesh-soft/mysql:8.0.28
+    container_name: mysql8_dev
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=alphesh123
+      - TZ=Asia/Shanghai
+    ports:
+      - "3308:3306"
+    volumes:
+      - /alphesh/data/mysql8_dev:/var/lib/mysql
+      - /alphesh/soft/mysql8_dev/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - /alphesh/logs/mysql8_dev:/var/log/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 6G
+        reservations:
+          memory: 4G
