@@ -1,0 +1,77 @@
+services:
+  mysql8_test:
+    image: registry.cn-beijing.aliyuncs.com/alphesh-soft/mysql:8.0.28
+    container_name: mysql8_test
+    hostname: mysql8_test
+    restart: always
+    ports:
+      - "3309:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: alphesh123
+    volumes:
+      # 1) 数据目录（必须独立）
+      - /alphesh/data/mysql8_test/data:/var/lib/mysql
+      # 2) 配置文件（建议只读挂载）
+      - /alphesh/soft/mysql8_test/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      # 3) 错误日志 / 慢日志目录
+      - /alphesh/logs/mysql8_test:/var/log/mysql
+      # 4) binlog 独立目录
+      # 需要配合 my.cnf 中：
+      # log_bin=/var/lib/mysql-bin/mysql-bin
+      - /alphesh/data/mysql8_test/binlog:/var/lib/mysql-bin
+      # 5) 备份目录
+      # 供 xtrabackup 容器或宿主机备份任务使用
+      - /mnt/mysql_nfs_backup/mysql8_test:/backup
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -p$${MYSQL_ROOT_PASSWORD} --silent || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # 文件句柄限制，MySQL 多表/高连接时很重要
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    # 优雅停止，给 InnoDB 更多时间刷盘
+    stop_grace_period: 1m30s
+    # 安全性与权限控制
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 18G
+        reservations:
+          memory: 12G
+    networks:
+      - mysql8_test
+
+  xtrabackup:
+    image: registry.cn-beijing.aliyuncs.com/alphesh-soft/percona-xtrabackup:8.0.28
+    # 不设置 container_name，避免 run 多次时命名冲突
+    # 不设置 restart，one-off 容器不需要
+    profiles:
+      - backup
+    volumes:
+      - /alphesh/data/mysql8_test/data:/var/lib/mysql
+      - /alphesh/soft/mysql8_test/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - /alphesh/logs/mysql8_test:/var/log/mysql
+      - /alphesh/data/mysql8_test/binlog:/var/lib/mysql-bin
+      - /mnt/mysql_nfs_backup/mysql8_test:/backup
+      - /alphesh/soft/mysql8_test/scripts:/scripts
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - mysql8_test
+
+networks:
+  mysql8_test:
+    driver: bridge
