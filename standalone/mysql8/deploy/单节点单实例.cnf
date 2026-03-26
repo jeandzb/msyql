@@ -87,7 +87,6 @@ enforce_gtid_consistency        = ON
 slow_query_log                  = 1
 long_query_time                 = 2
 slow_query_log_file             = /var/log/mysql/slow.log
-log_error                       = /var/log/mysql/error.log
 
 # =========================
 # 其他建议
