@@ -15,14 +15,16 @@ echo "[INFO] target dir: ${TARGET_DIR}"
 
 mkdir -p "${TARGET_DIR}"
 
-docker compose -f "${COMPOSE_FILE}" run --rm xtrabackup \
-  xtrabackup \
+mapfile -t COMPRESS_ARGS < <(xtrabackup_backup_compress_args)
+
+run_xtrabackup \
   --backup \
   --host="${MYSQL_HOST}" \
   --port="${MYSQL_PORT}" \
   --user="${MYSQL_USER}" \
   --password="${MYSQL_PASSWORD}" \
-  --target-dir="/backup/full/${TS}"
+  "${COMPRESS_ARGS[@]}" \
+  --target-dir="${FULL_MOUNT_DIR}/${TS}"
 
 ln -sfn "${TARGET_DIR}" "${LATEST_FULL_LINK}"
 

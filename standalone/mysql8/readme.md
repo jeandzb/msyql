@@ -1,5 +1,17 @@
 # MySQL 8.0（Docker 单节点）生产部署与备份恢复 README
 
+XtraBackup 相关文档入口：
+
+- 值班速查版：[XTRABACKUP_ONCALL_QUICK_REFERENCE.MD](/home/jean/project/jean/msyql/standalone/mysql8/backup/XtraBackup/XTRABACKUP_ONCALL_QUICK_REFERENCE.MD)
+- 正式交付版：[XTRABACKUP_DELIVERY_MANUAL.MD](/home/jean/project/jean/msyql/standalone/mysql8/backup/XtraBackup/XTRABACKUP_DELIVERY_MANUAL.MD)
+- 模板化配置文件：[backup.env](/home/jean/project/jean/msyql/standalone/mysql8/backup/XtraBackup/backup.env)
+
+说明：
+
+- 上述 3 个文件已整理为生产项目交付最终版
+- 可直接用于当前 `mysql8_dev` 实例
+- 也可通过占位符变量迁移到其他同类项目
+
 > 适用场景
 > - 单台数据库专用服务器
 > - MySQL 8.0 以 Docker / Docker Compose 方式部署
